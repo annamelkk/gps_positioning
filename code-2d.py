@@ -1,61 +1,96 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+# _____________ SETUP ___________
+
+# manually selecting coordinates of the satellites
 satellites = np.array([
-    [0,  0],
-    [7,  0],
-    [0,  7],
-    [7,  7],
-    [5, 15],
-    [15,15]
+    [0, 0],
+    [10, 0],
+    [0, 10],
+    [10, 10],
+    [5, 2],
+    [8, 9]
 ])
 
-true_position = np.array([5.6, 7.8])
+# true receiver position
+true_position = np.array([4.5, 6.2])
 
-# distances
-distances = np.linalg.norm(satellites - true_position, axis=1)
+distances = []
 
-# random noise
+for xi, yi in satellites:
+
+    distance = np.sqrt(
+        (true_position[0] - xi)**2 +
+        (true_position[1] - yi)**2
+    )
+
+    distances.append(distance)
+
+distances = np.array(distances)
+
+
+# Gaussian noise to simulate real GPS 
 noise = np.random.normal(0, 0.05, size=len(distances))
 noisy_distances = distances + noise
 
 
-def newton_solver(sat, d, max_iter=20):
-    x = np.mean(sat, axis=0)  # initial guess
+print("True distances:", distances)
+print("Noisy distances:", noisy_distances)
+
+
+# ____________ NEWTON SOLVER ____________
+def newton_solver(satellite, distances, max_iter=20, tol=1e-6):
+
+    x = np.mean(satellite, axis=0)
 
     for _ in range(max_iter):
 
-        F = np.zeros(len(sat))
-        J = np.zeros((len(sat), 2))
+        F = np.zeros(len(satellite))
+        J = np.zeros((len(satellite), 2))
 
-        for i, (xi, yi) in enumerate(sat):
-            F[i] = (x[0]-xi)**2 + (x[1]-yi)**2 - d[i]**2
-            J[i, 0] = 2*(x[0] - xi)
-            J[i, 1] = 2*(x[1] - yi)
+        for i, (xi, yi) in enumerate(satellite):
 
-        delta = np.linalg.lstsq(J, F, rcond=None)[0]
-        x = x - delta
+            dx = x[0] - xi
+            dy = x[1] - yi
+
+            F[i] = dx**2 + dy**2 - distances[i]**2
+
+            J[i, 0] = 2 * dx
+            J[i, 1] = 2 * dy
+
+        JTJ = J.T @ J
+        rhs = -J.T @ F
+
+        delta = np.linalg.solve(JTJ, rhs)
+
+        x = x + delta
+
+        if np.linalg.norm(delta) < tol:
+            break
 
     return x
 
 
-def linear_solver(sat, d):
-    x1, y1 = sat[0]
-    d1 = d[0]
+# ______________ LINEAR LEAST SQUARES METHOD _________
+
+def linear_solver(satellites, distances):
+
+    x1, y1 = satellites[0]
+    d1 = distances[0]
 
     A = []
     b = []
 
-    for i in range(1, len(sat)):
-        xi, yi = sat[i]
+    for i in range(1, len(satellites)):
 
-        A.append([
-            2*(xi - x1),
-            2*(yi - y1)
-        ])
+        xi, yi = satellites[i]
+        di = distances[i]
+
+        A.append([2*(xi - x1), 2*(yi - y1)])
 
         b.append(
-            d1**2 - d[i]**2 +
+            d1**2 - di**2 +
             xi**2 - x1**2 +
             yi**2 - y1**2
         )
@@ -63,11 +98,11 @@ def linear_solver(sat, d):
     A = np.array(A)
     b = np.array(b)
 
-    sol = np.linalg.lstsq(A, b, rcond=None)[0]
+    sol, *_ = np.linalg.lstsq(A, b, rcond=None)
+
     return sol
 
-
-# solve
+# Solve
 newton_est = newton_solver(satellites, noisy_distances)
 linear_est = linear_solver(satellites, noisy_distances)
 
@@ -83,6 +118,9 @@ print("\nNewton error:", error_newton)
 print("Linear error:", error_linear)
 
 
+# -----------------------------
+# Plot results
+# -----------------------------
 plt.scatter(satellites[:,0], satellites[:,1], label="Satellites")
 plt.scatter(*true_position, label="True", marker="x", s=100)
 plt.scatter(*newton_est, label="Newton", marker="o")
@@ -91,11 +129,12 @@ plt.scatter(*linear_est, label="Linear", marker="s")
 plt.legend()
 plt.title("GPS Positioning")
 plt.axis("equal")
+plt.grid()
 plt.show()
 
 
 
-# exp2
+# _____________ SATELLITE COUNT INFLUENCE ___________
 
 sat_counts = [3, 4, 5, 6]
 
@@ -106,10 +145,10 @@ for k in sat_counts:
 
     sat_subset = satellites[:k]
 
-    # recompute distances for subset
+    # recompute distances
     d = np.linalg.norm(sat_subset - true_position, axis=1)
 
-    # add noise
+    # noise
     noise = np.random.normal(0, 0.05, size=len(d))
     noisy_d = d + noise
 
@@ -117,7 +156,7 @@ for k in sat_counts:
     est_newton = newton_solver(sat_subset, noisy_d)
     est_linear = linear_solver(sat_subset, noisy_d)
 
-    # compute errors
+    # errors
     err_newton = np.linalg.norm(est_newton - true_position)
     err_linear = np.linalg.norm(est_linear - true_position)
 
@@ -125,8 +164,8 @@ for k in sat_counts:
     errors_linear.append(err_linear)
 
 
-# plot
 plt.figure()
+
 plt.plot(sat_counts, errors_newton, marker='o', label="Newton")
 plt.plot(sat_counts, errors_linear, marker='s', label="Least Squares")
 
