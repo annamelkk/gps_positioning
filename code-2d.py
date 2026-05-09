@@ -5,12 +5,12 @@ import matplotlib.pyplot as plt
 
 # manually selecting coordinates of the satellites
 satellites = np.array([
-    [0, 0],
-    [10, 0],
-    [0, 10],
+    [0,   0],
+    [10,  0],
+    [0,  10],
     [10, 10],
-    [5, 2],
-    [8, 9]
+    [5,   2],
+    [8,   9]
 ])
 
 # true receiver position
@@ -54,18 +54,24 @@ def newton_solver(satellite, distances, max_iter=20, tol=1e-6):
             dx = x[0] - xi
             dy = x[1] - yi
 
+            # for each satellite, computing how far off 
+            # the current estimate is
             F[i] = dx**2 + dy**2 - distances[i]**2
-
+            
+            # J consists of partial deriatives of F
             J[i, 0] = 2 * dx
             J[i, 1] = 2 * dy
-
+        
+        # solving the equation JT J * delta = -JT F
+        # JT J projects into the column space of J effectively
+        # making the overdetermined matrix usable for solving
         JTJ = J.T @ J
         rhs = -J.T @ F
 
         delta = np.linalg.solve(JTJ, rhs)
 
         x = x + delta
-
+        #repeat until ||delta|| < 10^-6 or max iterations reached
         if np.linalg.norm(delta) < tol:
             break
 
@@ -86,6 +92,10 @@ def linear_solver(satellites, distances):
 
         xi, yi = satellites[i]
         di = distances[i]
+
+        # we start from (x-xi)2 + (y-yi)2 = di2
+        # for obtaining linear equation for this method
+        # we just subtract eq for sat 0 from every other eq
 
         A.append([2*(xi - x1), 2*(yi - y1)])
 
