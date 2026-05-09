@@ -45,7 +45,7 @@ def newton_solver_3d(satellites, distances, max_iter=15, tol=1e-6):
     return x
 
 
-# Linear Least Squares Solver (3D + clock bias)
+# Linear Least Squares 
 def linear_solver_3d(satellites, distances):
 
     x0, y0, z0 = satellites[0]

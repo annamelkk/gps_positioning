@@ -118,9 +118,7 @@ print("\nNewton error:", error_newton)
 print("Linear error:", error_linear)
 
 
-# -----------------------------
-# Plot results
-# -----------------------------
+# Plots
 plt.scatter(satellites[:,0], satellites[:,1], label="Satellites")
 plt.scatter(*true_position, label="True", marker="x", s=100)
 plt.scatter(*newton_est, label="Newton", marker="o")
