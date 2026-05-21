@@ -90,11 +90,3 @@ This is implemented using Python 
 sol = np.linalg.lstsq(A, b, rcond=None)[0]
 ```
 
-3. Python Script
-  
-  
-
-4. Discussion
-  
-
-5. Extension to 3D
